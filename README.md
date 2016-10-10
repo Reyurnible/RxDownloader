@@ -43,6 +43,9 @@ reuest.execute()
         })
 ```
 
+explain for japanease.
+[Qiita](http://qiita.com/Reyurnible/items/7a706f9323e66d8819d1)
+
 ## Requirement
 
 AndroidStudio > 2.1
