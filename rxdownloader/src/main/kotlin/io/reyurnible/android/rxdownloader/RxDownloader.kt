@@ -156,18 +156,3 @@ class RxDownloader(
     // 再リクエストできるようにRequestを持たせるようにする
     class DownloadFailedException(message: String, val request: DownloadManager.Request?) : Throwable(message)
 }
-
-fun Array<DownloadManager.Request>.execute(context: Context): Observable<RxDownloader.DownloadStatus> =
-        RxDownloader(
-                context,
-                ArrayList<DownloadManager.Request>().apply { addAll(this@execute) }
-        ).execute()
-
-fun Collection<DownloadManager.Request>.execute(context: Context): Observable<RxDownloader.DownloadStatus> =
-        RxDownloader(
-                context,
-                ArrayList<DownloadManager.Request>().apply { addAll(this@execute) }
-        ).execute()
-
-fun DownloadManager.Request.execute(context: Context): Observable<RxDownloader.DownloadStatus> =
-        RxDownloader(context).enqueue(this).execute()
