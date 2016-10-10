@@ -31,6 +31,8 @@ dependencies {
     // Rx
     compile 'io.reactivex:rxandroid:1.2.1'
     compile "$rxjava"
+    // RxDownloader
+    compile project(":rxdownloader")
 
     testCompile 'junit:junit:4.12'
 }
