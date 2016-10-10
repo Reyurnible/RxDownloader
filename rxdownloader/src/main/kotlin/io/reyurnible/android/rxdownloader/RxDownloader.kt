@@ -34,49 +34,51 @@ class RxDownloader(
         requests.add(request)
     }
 
-    fun execute(): Observable<DownloadStatus> = Observable.create(Observable.OnSubscribe<DownloadStatus> { subscriber ->
-        receiver = object : BroadcastReceiver() {
-            override fun onReceive(context: Context?, intent: Intent?) {
-                intent ?: return
-                if (DownloadManager.ACTION_DOWNLOAD_COMPLETE.equals(intent.action)) {
-                    val id = intent.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1)
-                    if (!queuedRequests.contains(id)) {
-                        // このリクエストのセットの中のものでなければ処理をしない
-                        return
-                    }
-                    // チェッキングStatus
-                    resolveDownloadStatus(id, subscriber)
-                    // 未処理のリクエスト一覧からリクエストを削除する
-                    queuedRequests.remove(id)
-                    // 全てのリクエストが終わっていたらonCompleteを投げる
-                    if (queuedRequests.isEmpty()) {
-                        if (!(subscriber?.isUnsubscribed ?: true)) {
-                            subscriber?.onCompleted()
-                            // doOnUnsubscribeで後処理を全てするため、念のためunsubscribeを呼び出しておく
-                            subscriber?.unsubscribe()
+    fun execute(): Observable<DownloadStatus> =
+            if (requests.isEmpty()) Observable.empty()
+            else Observable.create(Observable.OnSubscribe<DownloadStatus> { subscriber ->
+                receiver = object : BroadcastReceiver() {
+                    override fun onReceive(context: Context?, intent: Intent?) {
+                        intent ?: return
+                        if (DownloadManager.ACTION_DOWNLOAD_COMPLETE.equals(intent.action)) {
+                            val id = intent.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1)
+                            if (!queuedRequests.contains(id)) {
+                                // このリクエストのセットの中のものでなければ処理をしない
+                                return
+                            }
+                            // チェッキングStatus
+                            resolveDownloadStatus(id, subscriber)
+                            // 未処理のリクエスト一覧からリクエストを削除する
+                            queuedRequests.remove(id)
+                            // 全てのリクエストが終わっていたらonCompleteを投げる
+                            if (queuedRequests.isEmpty()) {
+                                if (!(subscriber?.isUnsubscribed ?: true)) {
+                                    subscriber?.onCompleted()
+                                    // doOnUnsubscribeで後処理を全てするため、念のためunsubscribeを呼び出しておく
+                                    subscriber?.unsubscribe()
+                                }
+                            }
                         }
                     }
                 }
+                context.registerReceiver(receiver, IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE))
+                // 実際のリクエストを行う
+                requests.forEach {
+                    val downloadId = manager.enqueue(it)
+                    // このObservableの処理待ちのRequestとして追加する
+                    queuedRequests.put(downloadId, it)
+                    Log.d(TAG, "ID: ${downloadId}, START")
+                }
+            }).doOnUnsubscribe {
+                // Unsubscribeされたタイミングでリクエストを全て破棄する
+                queuedRequests.forEach {
+                    manager.remove(it.key)
+                }
+                // これ以上イベントは来ないのでReceiverを解除する
+                receiver?.let {
+                    context.unregisterReceiver(it)
+                }
             }
-        }
-        context.registerReceiver(receiver, IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE))
-        // 実際のリクエストを行う
-        requests.forEach {
-            val downloadId = manager.enqueue(it)
-            // このObservableの処理待ちのRequestとして追加する
-            queuedRequests.put(downloadId, it)
-            Log.d(TAG, "ID: ${downloadId}, START")
-        }
-    }).doOnUnsubscribe {
-        // Unsubscribeされたタイミングでリクエストを全て破棄する
-        queuedRequests.forEach {
-            manager.remove(it.key)
-        }
-        // これ以上イベントは来ないのでReceiverを解除する
-        receiver?.let {
-            context.unregisterReceiver(it)
-        }
-    }
 
     private fun resolveDownloadStatus(id: Long, subscriber: Subscriber<in DownloadStatus>) {
         val query = DownloadManager.Query().apply {
