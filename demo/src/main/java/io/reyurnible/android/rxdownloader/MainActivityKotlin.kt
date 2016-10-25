@@ -20,7 +20,6 @@ class MainActivityKotlin : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
-        val editTextUri: EditText = findViewById(R.id.edittext_url) as EditText
         findViewById(R.id.button_download).setOnClickListener {
             val uri = Uri.parse("https://dl.dropboxusercontent.com/u/31455721/bg_jpg/150501.jpg")
             download(uri)
@@ -29,36 +28,6 @@ class MainActivityKotlin : AppCompatActivity() {
             val intent: Intent = Intent(DownloadManager.ACTION_VIEW_DOWNLOADS)
             startActivity(intent)
         }
-
-        /* === Handling multi request === */
-        Observable.range(1, 5)
-                .map {
-                    DownloadManager.Request(
-                            Uri.parse("https://dl.dropboxusercontent.com/u/31455721/bg_jpg/15050${it}.jpg")
-                    ).apply {
-                        setAllowedNetworkTypes(
-                                DownloadManager.Request.NETWORK_MOBILE or DownloadManager.Request.NETWORK_WIFI
-                        )
-                        setTitle("Sample Download")
-                        setDescription("sample of using download manager")
-                        // and so your reuest settings...
-                    }
-                }
-                .toList()
-                .flatMap { it.execute(this) }
-                .subscribe(object : Subscriber<RxDownloader.DownloadStatus>() {
-                    override fun onNext(status: RxDownloader.DownloadStatus?) {
-                        // Handling status
-                    }
-
-                    override fun onError(e: Throwable?) {
-                        // Error action
-                    }
-
-                    override fun onCompleted() {
-                        // Complete all request
-                    }
-                })
     }
 
     private fun download(uri: Uri) {
@@ -73,18 +42,30 @@ class MainActivityKotlin : AppCompatActivity() {
         request.execute(this)
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
-                .subscribe(object : Subscriber<RxDownloader.DownloadStatus>() {
-                    override fun onNext(status: RxDownloader.DownloadStatus?) {
-                        // Handling status
+                .subscribe({ status ->
+                    // Handling status
+                    when (status) {
+                        is RxDownloader.DownloadStatus.Successful -> {
+                            Toast.makeText(this@MainActivityKotlin, "Successful Result: ${status.result.title}", Toast.LENGTH_SHORT).show()
+                        }
+                        is RxDownloader.DownloadStatus.Running -> {
+                            Toast.makeText(this@MainActivityKotlin, "Running Result: ${status.result.title}", Toast.LENGTH_SHORT).show()
+                        }
+                        is RxDownloader.DownloadStatus.Paused -> {
+                            Toast.makeText(this@MainActivityKotlin, "Paused Result: ${status.result.title}", Toast.LENGTH_SHORT).show()
+                        }
+                        is RxDownloader.DownloadStatus.Pending -> {
+                            Toast.makeText(this@MainActivityKotlin, "Pending Result: ${status.result.title}", Toast.LENGTH_SHORT).show()
+                        }
+                        is RxDownloader.DownloadStatus.Failed -> {
+                            Toast.makeText(this@MainActivityKotlin, "Failed Result: ${status.result.title}", Toast.LENGTH_SHORT).show()
+                        }
                     }
-
-                    override fun onError(e: Throwable?) {
-                        // Error action
-                    }
-
-                    override fun onCompleted() {
-                        // Complete all request
-                    }
+                }, { error ->
+                    // Error action
+                }, {
+                    // Complete all request
+                    Toast.makeText(this@MainActivityKotlin, "Complete downloads.", Toast.LENGTH_SHORT).show()
                 })
     }
 
