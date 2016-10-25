@@ -1,3 +1,7 @@
+[![Kotlin](https://img.shields.io/badge/kotlin-1.0.4-blue.svg)](http://kotlinlang.org)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+[![Kotlin Slack](https://img.shields.io/badge/chat-kotlin%20slack-orange.svg)](http://kotlinslackin.herokuapp.com)
+
 ## About
 RxDownloader is handling DownloadManager event as observable.
 
