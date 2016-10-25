@@ -7,6 +7,33 @@
     android:paddingLeft="@dimen/activity_horizontal_margin"
     android:paddingRight="@dimen/activity_horizontal_margin"
     android:paddingTop="@dimen/activity_vertical_margin"
-    tools:context="io.reyurnible.android.rxdownloader.MainActivity">
+    tools:context="io.reyurnible.android.rxdownloader.MainActivityKotlin">
+
+    <android.support.v7.widget.AppCompatEditText
+        android:id="@+id/edittext_url"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Please type download uri." />
+
+    <android.support.v7.widget.AppCompatSpinner
+        android:id="@+id/spinner_type"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:entries="@array/download_type"
+        android:layout_below="@+id/edittext_url" />
+
+    <android.support.v7.widget.AppCompatButton
+        android:id="@+id/button_download"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/spinner_type"
+        android:text="Donwload" />
+
+    <android.support.v7.widget.AppCompatButton
+        android:id="@+id/button_view"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="View Downloads"
+        android:layout_alignParentBottom="true" />
 
 </RelativeLayout>

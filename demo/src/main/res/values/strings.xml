@@ -1,3 +1,9 @@
 <resources>
     <string name="app_name">RxDownloader</string>
+
+    <string-array name="download_type">
+        <item>Simple</item>
+        <item>RxDownloader</item>
+    </string-array>
+
 </resources>
