@@ -1,5 +1,6 @@
 apply plugin: 'com.android.library'
 apply plugin: 'kotlin-android'
+apply plugin: 'com.novoda.bintray-release'
 
 android {
     compileSdkVersion 24
@@ -7,9 +8,6 @@ android {
 
     defaultConfig {
         minSdkVersion 15
-        targetSdkVersion 24
-        versionCode 1
-        versionName "1.0"
     }
     buildTypes {
         release {
@@ -19,6 +17,15 @@ android {
     }
     sourceSets {
         main.java.srcDirs += 'src/main/kotlin'
+    }
+
+    lintOptions {
+        textReport true
+        textOutput 'stdout'
+    }
+
+    packagingOptions {
+        exclude 'LICENSE.txt'
     }
 }
 
@@ -30,4 +37,18 @@ dependencies {
     compile "$rxjava"
 
     testCompile 'junit:junit:4.12'
+}
+
+publish {
+    userOrg = BINTRAY_USER
+    groupId = 'com.reyurnible'
+    uploadName = 'RxDownloader'
+    artifactId = 'rxdownloader'
+    publishVersion = '1.0.0'
+    desc = 'Android DownloadManager complete download event using to observable.'
+    website = rootProject.ext.siteUrl
+}
+
+afterEvaluate{
+    tasks.findByPath(":rxdownloader:mavenAndroidJavadocs").enabled = false
 }

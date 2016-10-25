@@ -11,6 +11,7 @@ buildscript {
     dependencies {
         classpath 'com.android.tools.build:gradle:2.1.3'
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
+        classpath 'com.novoda:bintray-release:0.3.4'
     }
 }
 
@@ -22,4 +23,10 @@ allprojects {
 
 task clean(type: Delete) {
     delete rootProject.buildDir
+}
+
+ext {
+    siteUrl = 'https://github.com/Reyurnible/RxAnimation'
+    gitUrl = 'https://github.com/Reyurnible/RxAnimation.git'
+    issueTrackingUrl = 'https://github.com/Reyurnible/RxAnimation/issues'
 }
