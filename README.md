@@ -5,6 +5,14 @@
 ## About
 RxDownloader is handling DownloadManager event as observable.
 
+## Build
+
+add to `app/build.gradle` dependencies
+
+```
+compile 'com.reyurnible:rxdownloader:1.0.0'
+```
+
 ## Using
 Simple use.
 
