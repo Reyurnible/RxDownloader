@@ -2,7 +2,7 @@
 
 buildscript {
     ext.kotlin_version = '1.0.4'
-    ext.rxjava = 'io.reactivex:rxjava:1.1.6'
+    ext.rxjava = 'io.reactivex:rxjava:1.2.0'
 
     repositories {
         jcenter()

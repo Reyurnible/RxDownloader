@@ -6,8 +6,8 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.util.Log
+import rx.AsyncEmitter
 import rx.Observable
-import rx.Subscriber
 import java.util.*
 
 /**
@@ -36,7 +36,7 @@ class RxDownloader(
 
     fun execute(): Observable<DownloadStatus> =
             if (requests.isEmpty()) Observable.empty()
-            else Observable.create(Observable.OnSubscribe<DownloadStatus> { subscriber ->
+            else Observable.fromEmitter({ emitter ->
                 receiver = object : BroadcastReceiver() {
                     override fun onReceive(context: Context?, intent: Intent?) {
                         intent ?: return
@@ -47,16 +47,12 @@ class RxDownloader(
                                 return
                             }
                             // チェッキングStatus
-                            resolveDownloadStatus(id, subscriber)
+                            resolveDownloadStatus(id, emitter)
                             // 未処理のリクエスト一覧からリクエストを削除する
                             queuedRequests.remove(id)
                             // 全てのリクエストが終わっていたらonCompleteを投げる
                             if (queuedRequests.isEmpty()) {
-                                if (!(subscriber?.isUnsubscribed ?: true)) {
-                                    subscriber?.onCompleted()
-                                    // doOnUnsubscribeで後処理を全てするため、念のためunsubscribeを呼び出しておく
-                                    subscriber?.unsubscribe()
-                                }
+                                emitter.onCompleted()
                             }
                         }
                     }
@@ -69,18 +65,20 @@ class RxDownloader(
                     queuedRequests.put(downloadId, it)
                     Log.d(TAG, "ID: ${downloadId}, START")
                 }
-            }).doOnUnsubscribe {
-                // Unsubscribeされたタイミングでリクエストを全て破棄する
-                queuedRequests.forEach {
-                    manager.remove(it.key)
-                }
-                // これ以上イベントは来ないのでReceiverを解除する
-                receiver?.let {
-                    context.unregisterReceiver(it)
-                }
-            }
 
-    private fun resolveDownloadStatus(id: Long, subscriber: Subscriber<in DownloadStatus>) {
+                emitter.setCancellation {
+                    // Unsubscribeされたタイミングでリクエストを全て破棄する
+                    queuedRequests.forEach {
+                        manager.remove(it.key)
+                    }
+                    // これ以上イベントは来ないのでReceiverを解除する
+                    receiver?.let {
+                        context.unregisterReceiver(it)
+                    }
+                }
+            }, AsyncEmitter.BackpressureMode.BUFFER)
+
+    private fun resolveDownloadStatus(id: Long, emitter: AsyncEmitter<in DownloadStatus>) {
         val query = DownloadManager.Query().apply {
             setFilterById(id)
         }
@@ -106,10 +104,8 @@ class RxDownloader(
                         else -> ""
                     }
                     Log.e(TAG, "ID: ${id}, FAILED: ${failedReason}")
-                    if (!subscriber.isUnsubscribed) {
-                        subscriber.onNext(DownloadStatus.Failed(id, failedReason))
-                        subscriber.onError(DownloadFailedException(failedReason, queuedRequests[id]))
-                    }
+                    emitter.onNext(DownloadStatus.Failed(id, failedReason))
+                    emitter.onError(DownloadFailedException(failedReason, queuedRequests[id]))
                 }
                 DownloadManager.STATUS_PAUSED -> {
                     val pausedReason = when (reason) {
@@ -120,27 +116,19 @@ class RxDownloader(
                         else -> ""
                     }
                     Log.d(TAG, "ID: ${id}, PAUSED: ${pausedReason}")
-                    if (!subscriber.isUnsubscribed) {
-                        subscriber.onNext(DownloadStatus.Paused(id, pausedReason))
-                    }
+                    emitter.onNext(DownloadStatus.Paused(id, pausedReason))
                 }
                 DownloadManager.STATUS_PENDING -> {
                     Log.d(TAG, "ID: ${id}, PENDING")
-                    if (!subscriber.isUnsubscribed) {
-                        subscriber.onNext(DownloadStatus.Pending(id))
-                    }
+                    emitter.onNext(DownloadStatus.Pending(id))
                 }
                 DownloadManager.STATUS_RUNNING -> {
                     Log.d(TAG, "ID: ${id}, RUNNING")
-                    if (!subscriber.isUnsubscribed) {
-                        subscriber.onNext(DownloadStatus.Running(id))
-                    }
+                    emitter.onNext(DownloadStatus.Running(id))
                 }
                 DownloadManager.STATUS_SUCCESSFUL -> {
                     Log.d(TAG, "ID: ${id}, SUCCESSFUL")
-                    if (!subscriber.isUnsubscribed) {
-                        subscriber.onNext(DownloadStatus.Successful(id))
-                    }
+                    emitter.onNext(DownloadStatus.Successful(id))
                 }
             }
         }
