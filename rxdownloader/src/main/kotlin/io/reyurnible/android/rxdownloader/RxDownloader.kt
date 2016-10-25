@@ -5,6 +5,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.database.Cursor
 import android.util.Log
 import rx.AsyncEmitter
 import rx.Observable
@@ -84,11 +85,10 @@ class RxDownloader(
         }
         val cursor = manager.query(query)
         if (cursor.moveToFirst()) {
-            val columnIndex = cursor.getColumnIndex(DownloadManager.COLUMN_STATUS)
-            val status = cursor.getInt(columnIndex)
-            val columnReason = cursor.getColumnIndex(DownloadManager.COLUMN_REASON)
-            val reason = cursor.getInt(columnReason)
-
+            val status = cursor.getInt(cursor.getColumnIndex(DownloadManager.COLUMN_STATUS))
+            val reason = cursor.getInt(cursor.getColumnIndex(DownloadManager.COLUMN_REASON))
+            val requestResult: RequestResult = createRequestResult(id, cursor)
+            Log.d(TAG, "RESULT: ${requestResult.toString()}")
             when (status) {
                 DownloadManager.STATUS_FAILED -> {
                     val failedReason = when (reason) {
@@ -104,7 +104,7 @@ class RxDownloader(
                         else -> ""
                     }
                     Log.e(TAG, "ID: ${id}, FAILED: ${failedReason}")
-                    emitter.onNext(DownloadStatus.Failed(id, failedReason))
+                    emitter.onNext(DownloadStatus.Failed(requestResult, failedReason))
                     emitter.onError(DownloadFailedException(failedReason, queuedRequests[id]))
                 }
                 DownloadManager.STATUS_PAUSED -> {
@@ -116,31 +116,42 @@ class RxDownloader(
                         else -> ""
                     }
                     Log.d(TAG, "ID: ${id}, PAUSED: ${pausedReason}")
-                    emitter.onNext(DownloadStatus.Paused(id, pausedReason))
+                    emitter.onNext(DownloadStatus.Paused(requestResult, pausedReason))
                 }
                 DownloadManager.STATUS_PENDING -> {
                     Log.d(TAG, "ID: ${id}, PENDING")
-                    emitter.onNext(DownloadStatus.Pending(id))
+                    emitter.onNext(DownloadStatus.Pending(requestResult))
                 }
                 DownloadManager.STATUS_RUNNING -> {
                     Log.d(TAG, "ID: ${id}, RUNNING")
-                    emitter.onNext(DownloadStatus.Running(id))
+                    emitter.onNext(DownloadStatus.Running(requestResult))
                 }
                 DownloadManager.STATUS_SUCCESSFUL -> {
                     Log.d(TAG, "ID: ${id}, SUCCESSFUL")
-                    emitter.onNext(DownloadStatus.Successful(id))
+                    emitter.onNext(DownloadStatus.Successful(requestResult))
                 }
             }
         }
         cursor.close()
     }
 
-    sealed class DownloadStatus(val id: Long) {
-        class Successful(id: Long) : DownloadStatus(id)
-        class Running(id: Long) : DownloadStatus(id)
-        class Pending(id: Long) : DownloadStatus(id)
-        class Paused(id: Long, val reason: String) : DownloadStatus(id)
-        class Failed(id: Long, val reason: String) : DownloadStatus(id)
+    fun createRequestResult(id: Long, cursor: Cursor): RequestResult =
+            RequestResult(
+                    id = id,
+                    remoteUri = cursor.getString(cursor.getColumnIndex(DownloadManager.COLUMN_URI)),
+                    localUri = cursor.getString(cursor.getColumnIndex(DownloadManager.COLUMN_LOCAL_URI)),
+                    mediaType = cursor.getString(cursor.getColumnIndex(DownloadManager.COLUMN_MEDIA_TYPE)),
+                    totalSize = cursor.getInt(cursor.getColumnIndex(DownloadManager.COLUMN_TOTAL_SIZE_BYTES)),
+                    title = cursor.getString(cursor.getColumnIndex(DownloadManager.COLUMN_TITLE)),
+                    description = cursor.getString(cursor.getColumnIndex(DownloadManager.COLUMN_DESCRIPTION))
+            )
+
+    sealed class DownloadStatus(val result: RequestResult) {
+        class Successful(result: RequestResult) : DownloadStatus(result)
+        class Running(result: RequestResult) : DownloadStatus(result)
+        class Pending(result: RequestResult) : DownloadStatus(result)
+        class Paused(result: RequestResult, val reason: String) : DownloadStatus(result)
+        class Failed(result: RequestResult, val reason: String) : DownloadStatus(result)
     }
 
     // 再リクエストできるようにRequestを持たせるようにする
