@@ -9,8 +9,16 @@ RxDownloader is handling DownloadManager event as observable.
 
 add to `app/build.gradle` dependencies
 
+```build.gradle
+repositories {
+  maven { url "https://dl.bintray.com/reyurnible/maven" }
+}
 ```
-compile 'com.reyurnible:rxdownloader:1.0.0'
+
+```app/build.gradle
+dependencies {
+  compile 'com.reyurnible:rxdownloader:1.0.0'
+}
 ```
 
 ## Using
